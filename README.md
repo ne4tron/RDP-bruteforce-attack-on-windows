@@ -48,9 +48,13 @@ Simulate a real-world red team operation by brute-forcing weak RDP credentials, 
 
 Lab Setup
 -attacker: kali linux
+
 tools :hydra,nmap,xfreerdp,python
+
 -victim:windows 10,
+
 tools:RDP enabled,weak password 
+
 -Network: Host only,isolated,no internet.
 
 ---
