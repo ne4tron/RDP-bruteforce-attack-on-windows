@@ -110,7 +110,11 @@ Check permissions:
 
 whoami /groups
 
-Run WinPEAS/SharpUp for local exploits (upload via RDP). Look for:
+Run WinPEAS/SharpUp for local exploits (upload via RDP).
+
+winPEAS.exe quiet cmd fast
+
+ Look for:
 
 AlwaysInstallElevated
 
