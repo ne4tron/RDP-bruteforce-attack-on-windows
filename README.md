@@ -200,27 +200,5 @@ Mitigation recommendations
 
 
 
----
 
-.gitignore
-
-*.log
-*.pcap
-*.cap
-*.pyc
-__pycache__/
-*.vbox
-*.vbox-prev
-*.vdi
-*.ova
-*.ovf
-.DS_Store
-.idea/
-.env
-output/
-
-
----
-
-End of README
 
