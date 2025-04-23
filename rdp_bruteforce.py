@@ -3,7 +3,7 @@ from multiprocessing import Pool, Manager, cpu_count
 from collections import Counter
 
 # Configuration
-target_ip = "192.168.56.101"
+target_ip = "192.168.137.128"
 username = "Administrator"
 rockyou_path = "/usr/share/wordlists/rockyou.txt"
 top_n = 1000
